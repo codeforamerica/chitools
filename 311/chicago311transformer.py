@@ -338,10 +338,9 @@ if __name__ == '__main__':
   if options.cases or options.all:
     print 'Combining follow-on requests into cases'
     make_cases()
-    # TODO: add status, initial type, dates
+    setup_cases_collection()
   
   if options.refine_cases or options.all:
     print 'Refining case summary data'
-    setup_cases_collection()
     refine_cases()
   
