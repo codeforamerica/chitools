@@ -123,7 +123,7 @@ def make_sr_document(sr_data, columns):
   del doc['updated_on']
   if doc['completion_date']:
     doc['completed'] = iso8601.parse_date(doc['completion_date'])
-    del doc['completed']
+    del doc['completion_date']
   
   # status should be all lower case
   doc['status'] = doc['status'].lower()
