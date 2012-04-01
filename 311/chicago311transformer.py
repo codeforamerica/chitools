@@ -71,7 +71,9 @@ def setup_combined_collection():
   db[DB_COMBINED_COLLECTION].ensure_index('service_request_type')
 
 def setup_cases_collection():
-  pass
+  db[DB_CASES_COLLECTION].ensure_index('initial_request')
+  db[DB_CASES_COLLECTION].ensure_index('initial_type')
+  db[DB_CASES_COLLECTION].ensure_index('created')
 
 def setup_services_collection():
   db[DB_SERVICES_COLLECTION].ensure_index('service_name')
@@ -340,5 +342,6 @@ if __name__ == '__main__':
   
   if options.refine_cases or options.all:
     print 'Refining case summary data'
+    setup_cases_collection()
     refine_cases()
   
