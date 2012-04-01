@@ -266,6 +266,32 @@ def make_cases():
       seen_ids[follow_id] = request_case
       
 
+def refine_cases():
+  for case in db[DB_CASES_COLLECTION].find():
+    # order the requests
+    if len(case['requests']) > 1:
+      case['requests'].sort(key=lambda request: request['created'])
+    
+    first = case['requests'][0]
+    last = case['requests'][-1]
+    if 'completed' in last['status'] and last['follow_on_service_request'] == None:
+      case['status'] = last['status']
+    else:
+      case['status'] = 'dup' in last['status'] and 'open - dup' or 'open'
+    
+    case['unending'] = last['follow_on_service_request'] != None
+    case['initial_type'] = first['service_request_type']
+    case['initial_request'] = first['service_request_number']
+    case['created'] = first['created']
+    case['updated'] = None
+    for request in case['requests']:
+      case['updated'] = latest(case['updated'], request['updated'])
+    if 'completed' in case['status']:
+      case['completed'] = last['completed']
+    
+    db[DB_CASES_COLLECTION].save(case)
+
+
 if __name__ == '__main__':
   parser = OptionParser()
   parser.add_option('-f', '--file', dest='file', help='A JSON file from Socrata to parse and import')
@@ -274,6 +300,7 @@ if __name__ == '__main__':
   parser.add_option('--reconcileservices', action='store_true', dest='reconcile_services', help='Update the service codes in the ServiceRequests collection.')
   parser.add_option('--reconcilecombined', action='store_true', dest='reconcile_combined', help='Update the service codes in the ServiceRequestsCombined collection.')
   parser.add_option('-c', '--cases', action='store_true', dest='cases', help='Create "cases," or sets of linked/follow-on service requests')
+  parser.add_option('--refinecases', action='store_true', dest='refine_cases', help='Refine the data stored with each case, putting the requests in order, adding initial type, status, etc.')
   parser.add_option('-a', '--all', action='store_true', dest='all', help='Perform all actions; if a file is provided as a first positional argument, load that JSON')
   (options, args) = parser.parse_args()
   
@@ -310,4 +337,8 @@ if __name__ == '__main__':
     print 'Combining follow-on requests into cases'
     make_cases()
     # TODO: add status, initial type, dates
+  
+  if options.refine_cases or options.all:
+    print 'Refining case summary data'
+    refine_cases()
   
