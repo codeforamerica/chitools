@@ -1,0 +1,16 @@
+"""
+Configuration file for the client piece.
+Copy and remove the .example extension, then customize. Don't commit!
+"""
+
+DB_PATH = ""
+DB_PORT = ####
+DB_NAME = ""
+DB_USER = ""
+DB_PASS = ""
+
+# Proj.4 String for whatever projection the points are in
+PROJECTION = ""
+
+# URL to send collected SRs to
+DEFAULT_SEND_URL = ""

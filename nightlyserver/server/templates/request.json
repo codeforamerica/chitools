@@ -1,0 +1,24 @@
+[
+  {
+    "service_request_id":"{{ sr['srs-SERVICE_REQUEST_NUM'] }}",
+    "agency_responsible":"{{ sr['codes_group-DESCRIPTION'] }}",
+    "status":"{{ sr['srs-STATUS_CODE'] }}",
+    "status_notes":"TODO",
+    "service_name":"TODO",
+    "service_code":"{{ sr['srs-TYPE_CODE'] }}",
+    "description":"{{ sr['srs-DESCRIPTION'] }}",
+    "requested_datetime":"{{ sr['srs-CREATED_DATE'] }}",
+    "updated_datetime":"{{ sr['srs-UPDATED_DATE'] }}",
+    "address":"TODO",
+    "lat":{{ sr['srs-Y_COORDINATE'] }},
+    "long":{{ sr['srs-X_COORDINATE'] }},
+    "activities":[
+      {% for activity in sr.activities %}
+      {
+        "datetime":"{{ activity['act-UPDATED_DATE'] }}",
+        "description":"{{ activity['codes_act-DESCRIPTION'] }}"
+      }{% if not loop.last %},{% endif %}
+      {% endfor %}
+    ]
+  }
+]
