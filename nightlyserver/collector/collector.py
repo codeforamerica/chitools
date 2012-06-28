@@ -198,7 +198,7 @@ if __name__ == '__main__':
     # parser = OptionParser()
     # parser.add_option("-u", "--url", dest="url", help="URL to send to")
     
-    start_day = datetime.date.today() - datetime.timedelta(4)
+    start_day = datetime.date.today() - datetime.timedelta(7)
     do_date_range(start_day, datetime.date.today())
     
     
