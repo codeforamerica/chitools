@@ -1,4 +1,10 @@
-import datetime, json
+from __future__ import with_statement
+try:
+    import json
+except ImportError:
+    import simplejson as json
+    
+import datetime
 import optparse
 from contextlib import contextmanager
 import cx_Oracle
