@@ -96,6 +96,16 @@ db = cx_Oracle.connect(DB_USER, DB_PASS, dsn)
 
 cur = db.cursor()
 
+def get_service_types():
+    cur.execute("SELECT CODE_CODE, DESCRIPTION FROM CODE_DESCRIPTIONS WHERE TYPE_CODE = 'SRSRTYPE'")
+    results = cur.fetchall()
+    types = {}
+    for item in results:
+        types[item[0]] = item[1]
+        
+    return types
+
+
 def get_for_dates(start_date, end_date=None):
     # clean up dates
     start_day = start_date.strftime('%d-%b-%y')
@@ -195,6 +205,25 @@ def do_date(the_date, save=False, send=True):
         
     if send:
         default_url = DEFAULT_SEND_URL + 'receive'
+        send_url = isinstance(send, basestring) and send or default_url
+        with debug_timer('  Post to server'):
+            requests.post(send_url, data=encoded, headers={'content-type': 'application/json'})
+
+
+def do_types(save=False, send=True):
+    print 'Getting type descriptions:'
+    with debug_timer('  Get data'):
+        data = get_service_types()
+    
+    encoded = json.dumps(data)
+    
+    if save:
+        f = open('nightlytypes_%s.json' % datetime.datetime.today().strftime('%y-%m-%d'), 'w')
+        f.write(encoded)
+        f.close()
+    
+    if send:
+        default_url = DEFAULT_SEND_URL + 'receive_types'
         send_url = isinstance(send, basestring) and send or default_url
         with debug_timer('  Post to server'):
             requests.post(send_url, data=encoded, headers={'content-type': 'application/json'})
