@@ -194,10 +194,11 @@ def do_date(the_date, save=False, send=True):
         f.close()
         
     if send:
-        send_url = isinstance(send, basestring) and send or DEFAULT_SEND_URL
+        default_url = DEFAULT_SEND_URL + 'receive'
+        send_url = isinstance(send, basestring) and send or default_url
         with debug_timer('  Post to server'):
             requests.post(send_url, data=encoded, headers={'content-type': 'application/json'})
-
+        
 
 
 if __name__ == '__main__':
