@@ -1,3 +1,6 @@
+import iso8601
+from db_info import *
+
 def save_sr_data(sr, db):
     sr = clean_document(sr)
     sr['EID'] = sr['srs-EID']
@@ -196,3 +199,24 @@ def clean_document(document):
         cleaned[new_k] = v
         
     return cleaned
+
+
+def save_sr_type_data(types, db):
+    '''Save/update SR code/name info in DB.
+    Takes a dictionary: {code: name}
+    or a list: [{code: code, name: name}]'''
+    
+    if isinstance(types, dict):
+        for code, name in types.iteritems():
+            insert_sr_type({
+                'code': code,
+                'name': name
+            }, db)
+    else:
+        for document in types:
+            insert_sr_type(document, db)
+
+
+def insert_sr_type(type_info, db):
+    type_info['_id'] = type_info['code']
+    db[COLLECTION_SERVICES].update({'_id': type_info['code']}, type_info, True)
