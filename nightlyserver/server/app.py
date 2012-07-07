@@ -140,7 +140,7 @@ def receive():
 
 
 @app.route("/receive_types", methods=['POST'])
-def receive():
+def receive_types():
     data = request.json
     if not data:
         print 'No or bad JSON.'
