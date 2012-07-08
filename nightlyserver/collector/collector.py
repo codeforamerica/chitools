@@ -5,7 +5,8 @@ except ImportError:
     import simplejson as json
     
 import datetime
-import optparse
+from optparse import OptionParser
+import sys
 from contextlib import contextmanager
 import cx_Oracle
 import pyproj
@@ -204,8 +205,8 @@ def do_date(the_date, save=False, send=True):
         f.close()
         
     if send:
-        default_url = DEFAULT_SEND_URL + 'receive'
-        send_url = isinstance(send, basestring) and send or default_url
+        default_url = DEFAULT_SEND_URL
+        send_url = (isinstance(send, basestring) and send or default_url) + 'receive'
         with debug_timer('  Post to server'):
             requests.post(send_url, data=encoded, headers={'content-type': 'application/json'})
 
@@ -223,18 +224,47 @@ def do_types(save=False, send=True):
         f.close()
     
     if send:
-        default_url = DEFAULT_SEND_URL + 'receive_types'
-        send_url = isinstance(send, basestring) and send or default_url
+        default_url = DEFAULT_SEND_URL
+        send_url = (isinstance(send, basestring) and send or default_url) + 'receive_types'
         with debug_timer('  Post to server'):
             requests.post(send_url, data=encoded, headers={'content-type': 'application/json'})
         
 
 
 if __name__ == '__main__':
-    # parser = OptionParser()
-    # parser.add_option("-u", "--url", dest="url", help="URL to send to")
+    parser = OptionParser()
+    parser.add_option("-d", "--days", dest="days", default=1, type="int", help="Number of days to capture data for. Using --start/--end overrides this.")
+    parser.add_option("-s", "--start", dest="start", help="Start date in the format 'YYYY-MM-DD'", default=None)
+    parser.add_option("-e", "--end", dest="end", help="End date (non-inclusive) in the format 'YYYY-MM-DD'", default=None)
+    parser.add_option("-u", "--url", dest="url", help="URL to send to", default=None)
+    parser.add_option("-p", "--post", dest="post", action="store_true", help="Whether to post the data to a server (use --url to specify what URL)")
+    parser.add_option("-t", "--types", dest="update_types", action="store_true", help="Update service type information", default=False)
+    parser.add_option("-o", "--output", dest="output", help="Output JSON file for each day to this directory", default=None)
+    (options, args) = parser.parse_args()
     
-    start_day = datetime.date.today() - datetime.timedelta(7)
-    do_date_range(start_day, datetime.date.today())
+    end_day = datetime.date.today()
+    start_day = end_day - datetime.timedelta(options.days)
+    if options.start:
+        try:
+            start_time = datetime.datetime.strptime(options.start, "%Y-%m-%d")
+            start_day = start_time.date()
+            if options.end:
+                end_time = datetime.datetime.strptime(options.end, "%Y-%m-%d")
+                end_day = end_time.date()
+        except:
+            sys.exit('Dates must be a day the format "YYYY-MM-DD"')
     
+    url = None
+    if options.post or options.url:
+        url = options.url or DEFAULT_SEND_URL
+        
+    output = options.output or False
     
+    if options.update_types:
+        print 'Updating service type information...'
+        do_types(save=output, send=url)
+        print ' '
+    
+    # REQUESTS
+    print 'Gathering data between %s and %s...' % (start_day, end_day)
+    do_date_range(start_day, end_day, save=output, send=url)
