@@ -4,3 +4,4 @@ COLLECTION_CASES      = 'Cases'
 COLLECTION_ORPHANS    = 'OrphanCases'
 
 COLLECTION_SERVICES   = 'Services'
+COLLECTION_API_KEYS   = 'APIKeys'

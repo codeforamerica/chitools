@@ -3,7 +3,7 @@ import json
 import datetime
 import traceback
 from contextlib import closing
-from flask import Flask, render_template, request, abort
+from flask import Flask, render_template, request, abort, make_response
 import pymongo
 import iso8601
 from handle_srs import *
@@ -18,6 +18,7 @@ DB_PORT = 27017
 DB_USER = 'NightlySRs'
 DB_PASS = 'NightlySRs'
 DB_NAME = 'NightlySRs'
+REQUIRE_KEY = False
 
 app = Flask(__name__)
 
@@ -28,6 +29,27 @@ def connect_db():
     # Really shouldn't do this here, but...
     connection[app.config['DB_NAME']][COLLECTION_CASE_INDEX].ensure_index('EID', unique=True, drop_dups=True)
     return connection
+
+
+@app.before_request
+def always_require_api_key(*args, **kwargs):
+    if app.config['REQUIRE_KEY']:
+        # was an API included?
+        if 'api_key' not in request.args:
+            return make_response(
+                json.dumps({'error': 'You must include an API Key ("?api_key=...") for ALL requests to this endpoint.'}),
+                400,
+                {'Content-type': 'application/json'})
+
+        # Check the key's validity
+        with connect_db() as db:
+            key = request.args['api_key']
+            key_info = db[app.config['DB_NAME']][COLLECTION_API_KEYS].find_one({'_id': key})
+            if not key_info:
+                return make_response(
+                    json.dumps({'error': 'Invalid API Key.'}),
+                    401,
+                    {'Content-type': 'application/json'})
 
 
 @app.route("/")
@@ -92,7 +114,6 @@ def receive_types():
             traceback.print_exc()
 
     return ""
-
 
 
 
