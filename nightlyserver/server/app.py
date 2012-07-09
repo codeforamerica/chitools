@@ -45,7 +45,7 @@ def api_get_request(request_id):
         actual_db = db[DB_NAME]
         sr = actual_db[COLLECTION_CASES].find_one({"_id": request_id})
         if sr and sr['requests'][0]['srs-TYPE_CODE'] in ACCEPTED_SERVICES:
-            data = sr_format.format_case(sr, actual_db)
+            data = [sr_format.format_case(sr, actual_db)]
             def json_formatter(obj):
                 if isinstance(obj, datetime.datetime):
                     return obj.isoformat()
