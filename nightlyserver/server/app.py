@@ -15,8 +15,8 @@ import sr_format
 DEBUG = True
 DB_HOST = 'localhost'
 DB_PORT = 27017
-DB_USER = ''
-DB_PASS = ''
+DB_USER = 'NightlySRs'
+DB_PASS = 'NightlySRs'
 DB_NAME = 'NightlySRs'
 
 app = Flask(__name__)
@@ -24,6 +24,7 @@ app = Flask(__name__)
 
 def connect_db():
     connection = pymongo.Connection(app.config['DB_HOST'], app.config['DB_PORT'])
+    connection[app.config['DB_NAME']].authenticate(app.config['DB_USER'], app.config['DB_PASS'])
     # Really shouldn't do this here, but...
     connection[app.config['DB_NAME']][COLLECTION_CASE_INDEX].ensure_index('EID', unique=True, drop_dups=True)
     return connection
