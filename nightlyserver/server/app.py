@@ -12,6 +12,10 @@ from db_info import *
 import sr_format
 
 # Config
+# NOTE: in production, you should pull in different config information.
+# The easiest way to do this is to call:
+#     application.config.from_object('<config_file>')
+# from your WSGI file.
 DEBUG = True
 DB_HOST = 'localhost'
 DB_PORT = 27017
