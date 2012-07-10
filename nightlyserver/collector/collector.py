@@ -178,16 +178,16 @@ def debug_timer(message=''):
 
 
 ############### API YOU WANT TO USE #################
-def do_date_range(start, end=None, save=False, send=True):
+def do_date_range(start, end=None, save=False, send=True, api_key=None):
     if not end:
         end = start + datetime.timedelta(1)
         
     the_date = start
     while the_date < end:
-        do_date(the_date, save, send)
+        do_date(the_date, save, send, api_key)
         the_date = the_date + datetime.timedelta(1)
 
-def do_date(the_date, save=False, send=True):
+def do_date(the_date, save=False, send=True, api_key):
     print '%s:' % the_date.strftime('%y-%m-%d')
     
     with debug_timer('  Overall'):
@@ -207,11 +207,14 @@ def do_date(the_date, save=False, send=True):
     if send:
         default_url = DEFAULT_SEND_URL
         send_url = (isinstance(send, basestring) and send or default_url) + 'receive'
+        params = {}
+        if api_key:
+            params['api_key'] = api_key
         with debug_timer('  Post to server'):
-            requests.post(send_url, data=encoded, headers={'content-type': 'application/json'})
+            requests.post(send_url, params=params, data=encoded, headers={'content-type': 'application/json'})
 
 
-def do_types(save=False, send=True):
+def do_types(save=False, send=True, api_key=None):
     print 'Getting type descriptions:'
     with debug_timer('  Get data'):
         data = get_service_types()
@@ -226,8 +229,11 @@ def do_types(save=False, send=True):
     if send:
         default_url = DEFAULT_SEND_URL
         send_url = (isinstance(send, basestring) and send or default_url) + 'receive_types'
+        params = {}
+        if api_key:
+            params['api_key'] = api_key
         with debug_timer('  Post to server'):
-            requests.post(send_url, data=encoded, headers={'content-type': 'application/json'})
+            requests.post(send_url, params=params, data=encoded, headers={'content-type': 'application/json'})
         
 
 
@@ -240,6 +246,7 @@ if __name__ == '__main__':
     parser.add_option("-p", "--post", dest="post", action="store_true", help="Whether to post the data to a server (use --url to specify what URL)")
     parser.add_option("-t", "--types", dest="update_types", action="store_true", help="Update service type information", default=False)
     parser.add_option("-o", "--output", dest="output", help="Output JSON file for each day to this directory", default=None)
+    parser.add_option("-k", "--key", dest="api_key", help="API key to use for the receiving server", default=None)
     (options, args) = parser.parse_args()
     
     end_day = datetime.date.today()
@@ -260,11 +267,13 @@ if __name__ == '__main__':
         
     output = options.output or False
     
+    api_key = options.api_key or OPEN311_API_KEY
+    
     if options.update_types:
         print 'Updating service type information...'
-        do_types(save=output, send=url)
+        do_types(save=output, send=url, api_key=api_key)
         print ' '
     
     # REQUESTS
     print 'Gathering data between %s and %s...' % (start_day, end_day)
-    do_date_range(start_day, end_day, save=output, send=url)
+    do_date_range(start_day, end_day, save=output, send=url, api_key=api_key)

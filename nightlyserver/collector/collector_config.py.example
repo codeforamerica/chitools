@@ -14,3 +14,4 @@ PROJECTION = ""
 
 # URL to send collected SRs to
 DEFAULT_SEND_URL = ""
+OPEN311_API_KEY = ""
