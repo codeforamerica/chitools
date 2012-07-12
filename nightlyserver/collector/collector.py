@@ -123,7 +123,7 @@ def get_for_dates(start_date, end_date=None):
                 ON srs.GROUP_CODE = codes_group.CODE_CODE AND codes_group.TYPE_CODE = 'GROUP'
             LEFT JOIN CODE_DESCRIPTIONS codes_act
                 ON act.ACTIVITY_CODE = codes_act.CODE_CODE AND codes_act.TYPE_CODE = 'SRACTVTY'
-        WHERE srs.CREATED_DATE >= '%s' AND srs.CREATED_DATE < '%s'""" % (', '.join(FIELD_NAMES), start_day, end_day))
+        WHERE srs.UPDATED_DATE >= '%s' AND srs.UPDATED_DATE < '%s'""" % (', '.join(FIELD_NAMES), start_day, end_day))
     
     return cur.fetchall()
 
