@@ -186,16 +186,21 @@ def save_sr_data(sr, db):
 def update_case_metadata(sr_case):
     first = sr_case['requests'][0]
     last = sr_case['requests'][len(sr_case['requests']) - 1]
-    for sr in sr_case['requests']:
-        if sr['srs-CREATED_DATE'] > last['srs-CREATED_DATE']:
-            last = sr
+    # Wrap in a try..except for cases where we have dates lacking timezones and can't compare :\
+    # (Not really worth the research ATM to see how to fix them up.)
+    try:
+        for sr in sr_case['requests']:
+            if sr['srs-CREATED_DATE'] > last['srs-CREATED_DATE']:
+                last = sr
+    except:
+        pass
     sr_case['service_code'] = first['srs-TYPE_CODE'];
     sr_case['requested_datetime'] = first['srs-CREATED_DATE'];
     sr_case['updated_datetime'] = last['srs-UPDATED_DATE'];
     sr_case['priority'] = first['srs-PRIORITY_CODE'];
     sr_case['location'] = [first['srs-X_COORDINATE'], first['srs-Y_COORDINATE']];
     # A case is open if any SRs in it are open (since some follow-ons are branching, this matters)
-    open_srs = filter(lambda sr: sr['srs-STATUS_CODE'].startswith('O'))
+    open_srs = filter(lambda sr: sr['srs-STATUS_CODE'].startswith('O'), sr_case['requests'])
     sr_case['status'] = len(open_srs) > 0 and 'open' or 'closed'
 
 
