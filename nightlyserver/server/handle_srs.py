@@ -23,6 +23,11 @@ def save_sr_data(sr, db):
                 
                 # add to case and index
                 case_data['requests'].append(sr)
+                
+                # update metadata on case if it's not an orphan
+                if not orphan:
+                    update_case_metadata(case_data)
+                
                 collection = db[orphan and COLLECTION_ORPHANS or COLLECTION_CASES]
                 collection.save(case_data)
                 db[COLLECTION_CASE_INDEX].insert({
@@ -66,6 +71,7 @@ def save_sr_data(sr, db):
                 'requests': [sr],
                 'duplicates': []
             }
+            update_case_metadata(case_data)
             # since it's the root, it's not orphaned
             case_id_str = db[COLLECTION_CASES].insert(case_data)
             # insert into index
@@ -110,6 +116,9 @@ def save_sr_data(sr, db):
                         raise Exception('Indexed case (%s) could not be found' % json.dumps(parent_case_id))
                 # add known case requests to parent case
                 parent_case_data['requests'].extend(case_data['requests'])
+                # update metadata on case if it's not an orphan
+                if not parent_orphan:
+                    update_case_metadata(parent_case_data)
                 # save parent
                 db[parent_orphan and COLLECTION_ORPHANS or COLLECTION_CASES].save(parent_case_data)
                 # update indices
@@ -119,6 +128,9 @@ def save_sr_data(sr, db):
                 db[orphan and COLLECTION_ORPHANS or COLLECTION_CASES].remove(case_data['_id'])
                 
             else:
+                # update metadata on case if it's not an orphan
+                if not orphan:
+                    update_case_metadata(case_data)
                 # save case
                 db[orphan and COLLECTION_ORPHANS or COLLECTION_CASES].save(case_data)
                 # index the parent for this case
@@ -145,6 +157,8 @@ def save_sr_data(sr, db):
                 }
                 # add requests from orphan case
                 parent_case_data['requests'].extend(case_data['requests'])
+                # update metadata on case
+                update_case_metadata(parent_case_data)
                 # insert new case
                 parent_case_id_str = db[COLLECTION_CASES].save(parent_case_data)
                 # update indices (need to update ALL, not just the orphan case's, since we already matched this one)
@@ -164,7 +178,25 @@ def save_sr_data(sr, db):
                     # add to case and sort requests by date (put in front of requests list?)
                     case_data['requests'].insert(0, sr)
                     
+                # update metadata on case
+                update_case_metadata(case_data)
                 db[COLLECTION_CASES].save(case_data)
+
+
+def update_case_metadata(sr_case):
+    first = sr_case['requests'][0]
+    last = sr_case['requests'][len(sr_case['requests']) - 1]
+    for sr in sr_case['requests']:
+        if sr['srs-CREATED_DATE'] > last['srs-CREATED_DATE']:
+            last = sr
+    sr_case['service_code'] = first['srs-TYPE_CODE'];
+    sr_case['requested_datetime'] = first['srs-CREATED_DATE'];
+    sr_case['updated_datetime'] = last['srs-UPDATED_DATE'];
+    sr_case['priority'] = first['srs-PRIORITY_CODE'];
+    sr_case['location'] = [first['srs-X_COORDINATE'], first['srs-Y_COORDINATE']];
+    # A case is open if any SRs in it are open (since some follow-ons are branching, this matters)
+    open_srs = filter(lambda sr: sr['srs-STATUS_CODE'].startswith('O'))
+    sr_case['status'] = len(open_srs) > 0 and 'open' or 'closed'
 
 
 def find_sr_in_list(sr, sr_list):
