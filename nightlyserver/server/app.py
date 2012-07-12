@@ -23,6 +23,8 @@ DB_USER = 'NightlySRs'
 DB_PASS = 'NightlySRs'
 DB_NAME = 'NightlySRs'
 REQUIRE_KEY = False
+MAX_PAGE_SIZE = 250
+DEFAULT_PAGE_SIZE = 50
 
 app = Flask(__name__)
 
@@ -33,6 +35,15 @@ def connect_db():
     # Really shouldn't do this here, but...
     connection[app.config['DB_NAME']][COLLECTION_CASE_INDEX].ensure_index('EID', unique=True, drop_dups=True)
     return connection
+
+
+def flattened_arg_list(arg_name):
+    flattened = None
+    if arg_name in request.args:
+        flattened = []
+        for item in request.args.getlist(arg_name):
+            flattened.extend(map(lambda subitem: subitem.strip(), item.split(',')))
+    return flattened
 
 
 @app.before_request
@@ -82,6 +93,55 @@ def api_get_request(request_id):
             return (output, 200, {'Content-type': 'application/json'})
             
     return ("No such service request", 404, None)
+
+
+@app.route("/api/requests.json")
+def api_get_requests():
+    # paging
+    page_size = app.config['DEFAULT_PAGE_SIZE']
+    if 'page_size' in request.args and request.args['page_size'].isdigit():
+        page_size = int(request.args['page_size'])  
+    page_size = min(app.config['MAX_PAGE_SIZE'], page_size)
+    if page_size <= 0:
+        page_size = app.config['DEFAULT_PAGE_SIZE']
+    page = 1
+    if 'page' in request.args and request.args['page'].isdigit():
+        page = max(1, int(request.args['page']))
+    
+    # date ranges
+    start_datetime = request.args.get('start_date', default=(datetime.datetime.now() - datetime.timedelta(90)))
+    end_datetime = request.args.get('end_date', default=datetime.datetime.now())
+    
+    # listed args can come in two formats:
+    # ?service_request_id=id&service_request_id=id
+    # ?service_request_id=id,id
+    service_request_id = flattened_arg_list('service_request_id')
+    service_code = flattened_arg_list('service_code')
+    status = flattened_arg_list('status')
+    
+    with closing(connect_db()) as db:
+        actual_db = db[DB_NAME]
+        query = {
+            'requested_datetime': {
+                '$gte': start_datetime,
+                '$lte': end_datetime
+            }
+        }
+        if service_request_id:
+            query['_id'] = {'$in': service_request_id}
+        if service_code:
+            query['service_code'] = {'$in': service_code}
+        if status:
+            query['status'] = {'$in': status}
+        srs = actual_db[COLLECTION_CASES].find(query).sort('requested_datetime', pymongo.DESCENDING).skip((page - 1) * page_size).limit(page_size)
+        data = map(lambda sr: sr_format.format_case(sr, actual_db), srs)
+        def json_formatter(obj):
+            if isinstance(obj, datetime.datetime):
+                return obj.isoformat()
+            raise TypeError(repr(o) + " is not JSON serializable")
+        
+        output = json.dumps(data, default=json_formatter)
+        return (output, 200, {'Content-type': 'application/json'})
 
 
 @app.route("/receive", methods=['POST'])
