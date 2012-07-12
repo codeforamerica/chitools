@@ -7,11 +7,18 @@ except ImportError:
 import datetime
 from optparse import OptionParser
 import sys
+import time
+from math import ceil
 from contextlib import contextmanager
 import cx_Oracle
 import pyproj
 import requests
 from collector_config import *
+
+SEND_CHUNK_SIZE = 150
+SEND_CHUNK_PAUSE = 10 # seconds
+SEND_CHUNK_RETRY_PAUSE = 20 # seconds
+SEND_CHUNK_RETRIES = 3
 
 SR_FIELDS = (
     "EID",
@@ -187,7 +194,7 @@ def do_date_range(start, end=None, save=False, send=True, api_key=None):
         do_date(the_date, save, send, api_key)
         the_date = the_date + datetime.timedelta(1)
 
-def do_date(the_date, save=False, send=True, api_key):
+def do_date(the_date, save=False, send=True, api_key=None):
     print '%s:' % the_date.strftime('%y-%m-%d')
     
     with debug_timer('  Overall'):
@@ -210,8 +217,40 @@ def do_date(the_date, save=False, send=True, api_key):
         params = {}
         if api_key:
             params['api_key'] = api_key
-        with debug_timer('  Post to server'):
-            requests.post(send_url, params=params, data=encoded, headers={'content-type': 'application/json'})
+        
+        # Upload in chunks to be nice to the receiving server
+        chunk_count = int(ceil(len(data.values()) / float(SEND_CHUNK_SIZE)))
+        if chunk_count > 1:
+            values = data.values()
+            index = 0
+            retries = 0
+            while index < chunk_count:
+                if index > 0:
+                    # Pause for a while to let the receiver calm down
+                    # Pause for longer before a retry
+                    pause = retries > 0 and SEND_CHUNK_RETRY_PAUSE or SEND_CHUNK_PAUSE
+                    print '  Pausing for %ss...' % pause
+                    time.sleep(pause)
+                chunk = values[index * SEND_CHUNK_SIZE:(index + 1) * SEND_CHUNK_SIZE]
+                encoded_chunk = json.dumps(chunk, default=sr_json_encoder)
+                with debug_timer('  Post to server - %s/%s' % (index + 1, chunk_count)):
+                    r = requests.post(send_url, params=params, data=encoded_chunk, headers={'content-type': 'application/json'})
+                    if r.status_code != 200:
+                        print '  ERROR POSTING TO SERVER. Code: %s, Text: %s' % (r.status_code, r.text)
+                        if retries < SEND_CHUNK_RETRIES
+                            print '    Repeating...'
+                            retries += 1
+                        else:
+                            retries = 0
+                            index += 1
+                    else:
+                        retries = 0
+                        index += 1
+        else:
+            with debug_timer('  Post to server'):
+                r = requests.post(send_url, params=params, data=encoded, headers={'content-type': 'application/json'})
+                if r.status_code != 200:
+                    print '  ERROR POSTING TO SERVER. Code: %s, Text: %s' % (r.status_code, r.text)
 
 
 def do_types(save=False, send=True, api_key=None):
@@ -233,7 +272,9 @@ def do_types(save=False, send=True, api_key=None):
         if api_key:
             params['api_key'] = api_key
         with debug_timer('  Post to server'):
-            requests.post(send_url, params=params, data=encoded, headers={'content-type': 'application/json'})
+            r = requests.post(send_url, params=params, data=encoded, headers={'content-type': 'application/json'})
+            if r.status_code != 200:
+                print '  ERROR POSTING TO SERVER. Code: %s, Text: %s' % (r.status_code, r.text)
         
 
 
