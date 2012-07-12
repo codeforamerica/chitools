@@ -119,13 +119,15 @@ def api_get_requests():
     service_code = flattened_arg_list('service_code')
     status = flattened_arg_list('status')
     
+    # CUSTOM: datetime_type (one of 'requested' or 'updated')
+    datetime_type = '%s_datetime' % request.args.get('datetime_type', default='requested')
+    
     with closing(connect_db()) as db:
         actual_db = db[DB_NAME]
-        query = {
-            'requested_datetime': {
-                '$gte': start_datetime,
-                '$lte': end_datetime
-            }
+        query = {}
+        query[datetime_type] = {
+            '$gte': start_datetime,
+            '$lte': end_datetime
         }
         if service_request_id:
             query['_id'] = {'$in': service_request_id}
@@ -133,7 +135,7 @@ def api_get_requests():
             query['service_code'] = {'$in': service_code}
         if status:
             query['status'] = {'$in': status}
-        srs = actual_db[COLLECTION_CASES].find(query).sort('requested_datetime', pymongo.DESCENDING).skip((page - 1) * page_size).limit(page_size)
+        srs = actual_db[COLLECTION_CASES].find(query).sort(datetime_type, pymongo.DESCENDING).skip((page - 1) * page_size).limit(page_size)
         data = map(lambda sr: sr_format.format_case(sr, actual_db), srs)
         def json_formatter(obj):
             if isinstance(obj, datetime.datetime):
