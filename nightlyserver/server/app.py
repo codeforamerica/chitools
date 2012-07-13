@@ -5,7 +5,7 @@ import traceback
 from contextlib import closing
 from flask import Flask, render_template, request, abort, make_response
 import pymongo
-import iso8601
+from dateutil.parser import parse as parse_date
 from handle_srs import *
 from accepted_services import *
 from db_info import *
@@ -109,8 +109,11 @@ def api_get_requests():
         page = max(1, int(request.args['page']))
     
     # date ranges
-    start_datetime = request.args.get('start_date', default=(datetime.datetime.now() - datetime.timedelta(90)))
-    end_datetime = request.args.get('end_date', default=datetime.datetime.now())
+    start_requested_datetime = request.args.get('start_date', type=parse_date)
+    end_requested_datetime = request.args.get('end_date', type=parse_date)
+    start_updated_datetime = request.args.get('start_updated_date', type=parse_date)
+    end_updated_datetime = request.args.get('end_updated_date', type=parse_date)
+    # NOTE: no attempt to limit the dates to 90 day ranges as per spec because we are doing paging
     
     # listed args can come in two formats:
     # ?service_request_id=id&service_request_id=id
@@ -120,22 +123,35 @@ def api_get_requests():
     status = flattened_arg_list('status')
     
     # CUSTOM: datetime_type (one of 'requested' or 'updated')
-    datetime_type = '%s_datetime' % request.args.get('datetime_type', default='requested')
+    order_default = (not start_requested_datetime and not end_requested_datetime and (start_updated_datetime or end_updated_datetime)) and 'updated' or 'requested'
+    order_by = request.args.get('order_by', default=order_default, type=lambda value: value in ('requested', 'updated') and value or order_default)
+    order_by = '%s_datetime' % order_by
     
     with closing(connect_db()) as db:
         actual_db = db[DB_NAME]
         query = {}
-        query[datetime_type] = {
-            '$gte': start_datetime,
-            '$lte': end_datetime
-        }
+        if start_requested_datetime or end_requested_datetime:
+            date_query = {}
+            if start_requested_datetime:
+                date_query['$gte'] = start_requested_datetime
+            if end_requested_datetime:
+                date_query['$lte'] = end_requested_datetime
+            query['requested_datetime'] = date_query
+        if start_updated_datetime or end_updated_datetime:
+            date_query = {}
+            if start_updated_datetime:
+                date_query['$gte'] = start_updated_datetime
+            if end_updated_datetime:
+                date_query['$lte'] = end_updated_datetime
+            query['updated_datetime'] = date_query
         if service_request_id:
             query['_id'] = {'$in': service_request_id}
         if service_code:
             query['service_code'] = {'$in': service_code}
         if status:
             query['status'] = {'$in': status}
-        srs = actual_db[COLLECTION_CASES].find(query).sort(datetime_type, pymongo.DESCENDING).skip((page - 1) * page_size).limit(page_size)
+            
+        srs = actual_db[COLLECTION_CASES].find(query).sort(order_by, pymongo.DESCENDING).skip((page - 1) * page_size).limit(page_size)
         data = map(lambda sr: sr_format.format_case(sr, actual_db), srs)
         def json_formatter(obj):
             if isinstance(obj, datetime.datetime):
