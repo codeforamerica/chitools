@@ -74,7 +74,27 @@ def index():
 
 @app.route("/api/services.json")
 def api_services():
-    return ""
+    with closing(connect_db()) as db:
+        actual_db = db[DB_NAME]
+        rows = actual_db.Services.find({"_id": {"$in": ACCEPTED_SERVICES}})
+        
+    services = []
+    for row in rows:
+        services.append({
+            # Use a custom UUID to match Spot Reporter
+            'service_code': row['uuid'],
+            'service_name': row['name'],
+            'description': row.get('description'),
+            'metadata': False,
+            'type': 'batch',
+            'group': row.get('department'),
+            # Include internal service code as keyword
+            'keywords': 'code:%s' % row['_id'],
+        })
+    return make_response(
+        json.dumps(services),
+        200,
+        {'Content-type': 'application/json'})
 
 
 @app.route("/api/requests/<request_id>.json")
