@@ -139,8 +139,14 @@ def api_get_requests():
     # ?service_request_id=id&service_request_id=id
     # ?service_request_id=id,id
     service_request_id = flattened_arg_list('service_request_id')
-    service_code = flattened_arg_list('service_code')
     status = flattened_arg_list('status')
+    service_code = flattened_arg_list('service_code')
+    # limit service codes to the accepted ones
+    if service_code:
+        service_code = filter(lambda code: code in ACCEPTED_SERVICES, service_code)
+    else:
+        service_code = ACCEPTED_SERVICES
+    
     
     # CUSTOM: datetime_type (one of 'requested' or 'updated')
     order_default = (not start_requested_datetime and not end_requested_datetime and (start_updated_datetime or end_updated_datetime)) and 'updated' or 'requested'
