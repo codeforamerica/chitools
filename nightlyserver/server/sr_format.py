@@ -47,7 +47,7 @@ def format_case(sr_case, db):
         'status': overall_status,
         'status_notes': status_notes,
         'service_name': get_service_by_code(base_sr['srs-TYPE_CODE'], db),
-        'service_code': base_sr['srs-TYPE_CODE'],
+        'service_code': get_service_uuid_by_code(base_sr['srs-TYPE_CODE'], db),
         'description': base_sr['srs-DETAILS'],
         'requested_datetime': base_sr['srs-CREATED_DATE'],
         'updated_datetime': base_sr['srs-UPDATED_DATE'],
@@ -119,3 +119,10 @@ def get_service_by_code(code, db):
     service = db[COLLECTION_SERVICES].find_one({'_id': code})
     return service and service['name'] or None
 
+
+def get_service_uuid_by_code(code, db):
+    """Get the service name associated with a service code."""
+    # FIXME: this should probably cache the list of services instead of hitting the DB
+    service = db[COLLECTION_SERVICES].find_one({'_id': code})
+    return service and service['uuid'] or None
+    
