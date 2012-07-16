@@ -1,4 +1,5 @@
 import json
+import uuid
 import iso8601
 from db_info import *
 
@@ -253,6 +254,11 @@ def save_sr_type_data(types, db):
     else:
         for document in types:
             insert_sr_type(document, db)
+    
+    # make sure any new types have UUIDs...
+    for service in db[COLLECTION_SERVICES].find({'uuid': {'$exists': False}}):
+        service['uuid'] = uuid.uuid4()
+        db[COLLECTION_SERVICES].save(service)
 
 
 def insert_sr_type(type_info, db):
