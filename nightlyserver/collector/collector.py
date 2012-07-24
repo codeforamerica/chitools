@@ -228,7 +228,7 @@ def do_date(the_date, save=False, send=True, api_key=None):
                 if index > 0:
                     # Pause for a while to let the receiver calm down
                     # Pause for longer before a retry
-                    pause = retries > 0 and SEND_CHUNK_RETRY_PAUSE or SEND_CHUNK_PAUSE
+                    pause = retries > 0 and (SEND_CHUNK_RETRY_PAUSE * retries) or SEND_CHUNK_PAUSE
                     print '  Pausing for %ss...' % pause
                     time.sleep(pause)
                 chunk = values[index * SEND_CHUNK_SIZE:(index + 1) * SEND_CHUNK_SIZE]
@@ -237,7 +237,7 @@ def do_date(the_date, save=False, send=True, api_key=None):
                     r = requests.post(send_url, params=params, data=encoded_chunk, headers={'content-type': 'application/json'})
                     if r.status_code != 200:
                         print '  ERROR POSTING TO SERVER. Code: %s, Text: %s' % (r.status_code, r.text)
-                        if retries < SEND_CHUNK_RETRIES
+                        if retries < SEND_CHUNK_RETRIES:
                             print '    Repeating...'
                             retries += 1
                         else:
