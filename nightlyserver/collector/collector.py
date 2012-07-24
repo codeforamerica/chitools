@@ -15,8 +15,8 @@ import pyproj
 import requests
 from collector_config import *
 
-SEND_CHUNK_SIZE = 150
-SEND_CHUNK_PAUSE = 10 # seconds
+SEND_CHUNK_SIZE = 200
+SEND_CHUNK_PAUSE = 0 # seconds
 SEND_CHUNK_RETRY_PAUSE = 20 # seconds
 SEND_CHUNK_RETRIES = 3
 
@@ -229,8 +229,9 @@ def do_date(the_date, save=False, send=True, api_key=None):
                     # Pause for a while to let the receiver calm down
                     # Pause for longer before a retry
                     pause = retries > 0 and (SEND_CHUNK_RETRY_PAUSE * retries) or SEND_CHUNK_PAUSE
-                    print '  Pausing for %ss...' % pause
-                    time.sleep(pause)
+                    if pause > 0:
+                        print '  Pausing for %ss...' % pause
+                        time.sleep(pause)
                 chunk = values[index * SEND_CHUNK_SIZE:(index + 1) * SEND_CHUNK_SIZE]
                 encoded_chunk = json.dumps(chunk, default=sr_json_encoder)
                 with debug_timer('  Post to server - %s/%s' % (index + 1, chunk_count)):
