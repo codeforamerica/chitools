@@ -257,7 +257,7 @@ def save_sr_type_data(types, db):
     
     # make sure any new types have UUIDs...
     for service in db[COLLECTION_SERVICES].find({'uuid': {'$exists': False}}):
-        service['uuid'] = uuid.uuid4()
+        service['uuid'] = str(uuid.uuid4())
         db[COLLECTION_SERVICES].save(service)
 
 
