@@ -1,6 +1,6 @@
 import json
 import uuid
-import iso8601
+from dateutil.parser import parse as parse_date
 from db_info import *
 
 def save_sr_data(sr, db):
@@ -220,7 +220,7 @@ def clean_document(document):
         # ISO 8601 dates will be demarcated by "date::[date]"
         if isinstance(v, basestring) and v.startswith('date::'):
             try:
-                v = iso8601.parse_date(v[6:])
+                v = parse_date(v[6:])
             except:
                 pass
         
