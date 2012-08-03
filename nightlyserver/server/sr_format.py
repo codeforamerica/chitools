@@ -50,7 +50,7 @@ def format_case(sr_case, db):
         'service_code': get_service_uuid_by_code(base_sr['srs-TYPE_CODE'], db),
         'description': base_sr['srs-DETAILS'],
         'requested_datetime': base_sr['srs-CREATED_DATE'],
-        'updated_datetime': base_sr['srs-UPDATED_DATE'],
+        'updated_datetime': last_sr['srs-UPDATED_DATE'],
         'address': format_address(base_sr, regional=True),
         'zipcode': base_sr['srs-ZIP_CODE'],
         'lat': base_sr['srs-Y_COORDINATE'],
