@@ -67,6 +67,15 @@ def always_require_api_key(*args, **kwargs):
                     {'Content-type': 'application/json'})
 
 
+@app.after_request
+def make_jsonp(response):
+    extension = request.path.rpartition('.')[2]
+    callback = request.args.get('callback')
+    if extension in ('json', 'jsonp') and callback:
+        response.data = '%s(%s)' % (callback, response.data)
+    return response
+
+
 @app.route("/")
 def index():
     return "Chicago Nightly 311";
