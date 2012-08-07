@@ -7,12 +7,12 @@ def format_address(sr, regional=False):
     # TODO: fix capitalization?
     address = str(sr['srs-STREET_NUMBER'])
     if sr['srs-STREET_NAME_PREFIX']:
-        address = address + ' ' + sr['srs-STREET_NAME_PREFIX']
-    address = address + ' ' + sr['srs-STREET_NAME']
+        address = '%s %s' % (address, sr['srs-STREET_NAME_PREFIX'])
+    address = '%s %s' % (address, sr['srs-STREET_NAME'])
     if sr['srs-STREET_SUFFIX_DIRECTION']:
-        address = address + ' ' + sr['srs-STREET_SUFFIX_DIRECTION']
+        address = '%s %s' % (address, sr['srs-STREET_SUFFIX_DIRECTION'])
     if sr['srs-STREET_NAME_SUFFIX']:
-        address = address + ' ' + sr['srs-STREET_NAME_SUFFIX']
+        address = '%s %s' % (address, sr['srs-STREET_NAME_SUFFIX'])
     if regional:
         address = '%s, %s, %s %s' % (address, sr['srs-CITY'], sr['srs-STATE_CODE'], sr['srs-ZIP_CODE'])
     return address
