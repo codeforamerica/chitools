@@ -21,8 +21,8 @@ def format_address(sr, regional=False):
 def format_case(sr_case, db):
     '''Format a case as an Open311 Service Request'''
     
-    # create the activities list
-    activities = activities_for_case(sr_case, db)
+    # create the notes list
+    notes = notes_for_case(sr_case, db)
     
     # is the whole case closed?
     last_sr = sr_case['requests'][-1]
@@ -30,14 +30,14 @@ def format_case(sr_case, db):
     
     if overall_status == 'closed':
         # add an activity for closing the case
-        activities.append({
+        notes.append({
             'datetime': last_sr['srs-UPDATED_DATE'],
             'description': 'Service request completed.',
             'type': 'closed'
         })
     
     # set detailed status information to be the latest activity
-    status_notes = len(activities) and activities[-1]['description'] or None
+    status_notes = len(notes) and notes[-1]['description'] or None
     
     base_sr = sr_case['requests'][0]
     
@@ -57,7 +57,8 @@ def format_case(sr_case, db):
         'long': base_sr['srs-X_COORDINATE'],
         
         # CUSTOM
-        'activities': activities,
+        'notes': notes,
+        'activities': notes,
         'received_via':  base_sr['srs-METHOD_RECEIVED_CODE'],
         
         # Intentionally not filled in
@@ -70,14 +71,14 @@ def format_case(sr_case, db):
     return sr
 
 
-def activities_for_case(sr_case, db):
-    '''Generate a list of activities based on CSR activities and follow-ons'''
+def notes_for_case(sr_case, db):
+    '''Generate a list of notes based on CSR activities and follow-ons'''
     
-    activities = []
+    notes = []
     for index, subrequest in enumerate(sr_case['requests']):
         if index > 0:
             # create an activity to represent a follow-on
-            activity = {
+            note = {
                 'datetime': subrequest['srs-CREATED_DATE'],
                 'description': get_service_by_code(subrequest['srs-TYPE_CODE'], db) or subrequest['srs-TYPE_CODE'],
                 'type': 'subrequest',
@@ -89,7 +90,7 @@ def activities_for_case(sr_case, db):
                     'details': subrequest['srs-DETAILS'],
                 }
             }
-            activities.append(activity)
+            notes.append(note)
         
         # Create an activity for all completed activities on the SR
         # NOTE: Many activities are auto-created but are never done,
@@ -97,7 +98,7 @@ def activities_for_case(sr_case, db):
         # TODO: include assigned activities? Need to research it.
         for sr_activity in subrequest['activities']:
             if sr_activity['act-COMPLETE_DATE']:
-                activity = {
+                note = {
                     'datetime': sr_activity['act-COMPLETE_DATE'],
                     'description': sr_activity['codes_act-DESCRIPTION'],
                     'type': 'activity',
@@ -105,12 +106,12 @@ def activities_for_case(sr_case, db):
                 }
                 # including details for now
                 if 'act-DETAILS' in sr_activity and sr_activity['act-DETAILS']:
-                    activity['properties']['details'] = sr_activity['act-DETAILS']
-                activities.append(activity)
+                    note['properties']['details'] = sr_activity['act-DETAILS']
+                notes.append(note)
     
     # ensure activities are in chronological order
-    activities.sort(key=lambda activity: activity['datetime'])
-    return activities
+    notes.sort(key=lambda note: note['datetime'])
+    return notes
 
 
 def get_service_by_code(code, db):
