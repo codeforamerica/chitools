@@ -3,6 +3,7 @@ import json
 import datetime
 import traceback
 from contextlib import closing
+import logging
 from flask import Flask, render_template, request, abort, make_response
 import pymongo
 from dateutil.parser import parse as parse_date
@@ -27,6 +28,11 @@ MAX_PAGE_SIZE = 250
 DEFAULT_PAGE_SIZE = 50
 
 app = Flask(__name__)
+
+# Logging
+LOG_LEVEL = logging.ERROR
+LOG_PATH = os.environ.get('NIGHTLY_SR_LOG_PATH', None)
+logging.basicConfig(level=LOG_LEVEL, filename=LOG_PATH)
 
 
 def connect_db():
