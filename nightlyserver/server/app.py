@@ -118,7 +118,7 @@ def api_get_request(request_id):
         actual_db = db[DB_NAME]
         sr = actual_db[COLLECTION_CASES].find_one({"_id": request_id})
         if sr and sr['requests'][0]['srs-TYPE_CODE'] in ACCEPTED_SERVICES:
-            data = [sr_format.format_case(sr, actual_db)]
+            data = [sr_format.format_case(sr, actual_db, legacy=True)]
             def json_formatter(obj):
                 if isinstance(obj, datetime.datetime):
                     return obj.isoformat()
@@ -193,7 +193,7 @@ def api_get_requests():
             query['status'] = {'$in': status}
             
         srs = actual_db[COLLECTION_CASES].find(query).sort(order_by, pymongo.DESCENDING).skip((page - 1) * page_size).limit(page_size)
-        data = map(lambda sr: sr_format.format_case(sr, actual_db), srs)
+        data = map(lambda sr: sr_format.format_case(sr, actual_db, legacy=True), srs)
         def json_formatter(obj):
             if isinstance(obj, datetime.datetime):
                 return obj.isoformat()

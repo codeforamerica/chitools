@@ -18,7 +18,7 @@ def format_address(sr, regional=False):
     return address
 
 
-def format_case(sr_case, db):
+def format_case(sr_case, db, legacy=False):
     '''Format a case as an Open311 Service Request'''
     
     # create the notes list
@@ -58,8 +58,11 @@ def format_case(sr_case, db):
         
         # CUSTOM
         'notes': notes,
-        'activities': notes,
-        'received_via':  base_sr['srs-METHOD_RECEIVED_CODE'],
+        'extended_attributes': {
+            'channel': base_sr['srs-METHOD_RECEIVED_CODE'],
+            # Not sure this is actually ward
+            'ward': base_sr['srs-GEO_AREA_VALUE'],
+        },
         
         # Intentionally not filled in
         'media_url': None, # New data should have this (e.g. coming in through the API), but old data usually won't
@@ -68,10 +71,15 @@ def format_case(sr_case, db):
         'address_id': None, # not sure there's even anything like this in CSR
     }
     
+    # old (non-CB) style
+    if legacy:
+        sr['activities'] = notes_for_case(sr_case, db, legacy=True)
+        sr['received_via'] = base_sr['srs-METHOD_RECEIVED_CODE']
+    
     return sr
 
 
-def notes_for_case(sr_case, db):
+def notes_for_case(sr_case, db, legacy=False):
     '''Generate a list of notes based on CSR activities and follow-ons'''
     
     notes = []
