@@ -150,7 +150,7 @@ def notes_for_case(sr_case, db, legacy=False):
                         note['properties']['details'] = sr_activity['act-DETAILS']
                 else:
                     note['summary'] = sr_activity['codes_act-DESCRIPTION']
-                    note['description'] = 'OUTCOME DESCRIPTION'
+                    note['description'] = get_outcome_by_code(sr_activity['act-OUTCOME_CODE'], db)
                 notes.append(note)
         
         # CB style has a note for subrequest closure
@@ -187,4 +187,10 @@ def get_service_uuid_by_code(code, db):
     # FIXME: this should probably cache the list of services instead of hitting the DB
     service = db[COLLECTION_SERVICES].find_one({'_id': code})
     return service and service['uuid'] or None
-    
+   
+def get_outcome_by_code(code, db):
+    """Get the outcome name associated with an outcome code."""
+    # FIXME: this should probably cache the list of services instead of hitting the DB
+    outcome = db[COLLECTION_OUTCOMES].find_one({'_id': code})
+    return outcome and outcome['name'] or None
+
