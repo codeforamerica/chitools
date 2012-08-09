@@ -32,12 +32,19 @@ def format_case(sr_case, db, legacy=False):
         # add an activity for closing the case
         notes.append({
             'datetime': last_sr['srs-UPDATED_DATE'],
-            'description': 'Service request completed.',
+            'summary': 'Request closed',
             'type': 'closed'
         })
     
     # set detailed status information to be the latest activity
-    status_notes = len(notes) and notes[-1]['description'] or None
+    status_notes = None
+    last_note = len(notes) and notes[-1] or None
+    if last_note:
+        if last_note['type'] == 'activity' or ('description' not in last_note):
+            status_notes = last_note['summary']
+        else:
+            status_notes = last_note['description']
+    # status_notes = len(notes) and notes[-1]['summary'] or None
     
     base_sr = sr_case['requests'][0]
     
@@ -75,6 +82,13 @@ def format_case(sr_case, db, legacy=False):
     if legacy:
         sr['activities'] = notes_for_case(sr_case, db, legacy=True)
         sr['received_via'] = base_sr['srs-METHOD_RECEIVED_CODE']
+        if overall_status == 'closed':
+            # add an activity for closing the case
+            sr['activities'].append({
+                'datetime': last_sr['srs-UPDATED_DATE'],
+                'description': 'Service request completed.',
+                'type': 'closed'
+            })
     
     return sr
 
@@ -84,20 +98,38 @@ def notes_for_case(sr_case, db, legacy=False):
     
     notes = []
     for index, subrequest in enumerate(sr_case['requests']):
-        if index > 0:
+        if index == 0:
+            # CB-style has a specially formatted note for opening the root SR
+            if not legacy:
+                notes.append({
+                    'datetime': subrequest['srs-CREATED_DATE'],
+                    'summary': 'Request opened',
+                    'type': 'opened'
+                })
+        else:
             # create an activity to represent a follow-on
+            service_name = get_service_by_code(subrequest['srs-TYPE_CODE'], db) or subrequest['srs-TYPE_CODE']
             note = {
                 'datetime': subrequest['srs-CREATED_DATE'],
-                'description': get_service_by_code(subrequest['srs-TYPE_CODE'], db) or subrequest['srs-TYPE_CODE'],
-                'type': 'subrequest',
-                'properties': {
+                'type': legacy and 'subrequest' or 'follow_on',
+            }
+            if legacy:
+                note['description'] = service_name
+                note['properties'] = {
                     'service_request_id': subrequest['srs-SERVICE_REQUEST_NUM'],
                     'service_code': subrequest['srs-TYPE_CODE'],
                     'agency_responsible': subrequest['codes_group-DESCRIPTION'],
                     # TODO: should this carry more info?
                     'details': subrequest['srs-DETAILS'],
                 }
-            }
+            else:
+                note['description'] = 'Follow-on %s Created' % service_name
+                note['summary'] = 'Follow-on SR Update'
+                note['extended_attributes'] = {
+                    'service_request_id': subrequest['srs-SERVICE_REQUEST_NUM'],
+                    'service_name': service_name,
+                    'agency_responsible': subrequest['codes_group-DESCRIPTION']
+                }
             notes.append(note)
         
         # Create an activity for all completed activities on the SR
@@ -108,14 +140,35 @@ def notes_for_case(sr_case, db, legacy=False):
             if sr_activity['act-COMPLETE_DATE']:
                 note = {
                     'datetime': sr_activity['act-COMPLETE_DATE'],
-                    'description': sr_activity['codes_act-DESCRIPTION'],
                     'type': 'activity',
-                    'properties': {}
                 }
-                # including details for now
-                if 'act-DETAILS' in sr_activity and sr_activity['act-DETAILS']:
-                    note['properties']['details'] = sr_activity['act-DETAILS']
+                if legacy:
+                    note['description'] = sr_activity['codes_act-DESCRIPTION']
+                    note['properties'] = {}
+                    # including details for now
+                    if 'act-DETAILS' in sr_activity and sr_activity['act-DETAILS']:
+                        note['properties']['details'] = sr_activity['act-DETAILS']
+                else:
+                    note['summary'] = sr_activity['codes_act-DESCRIPTION']
+                    note['description'] = 'OUTCOME DESCRIPTION'
                 notes.append(note)
+        
+        # CB style has a note for subrequest closure
+        if not legacy and subrequest['srs-STATUS_CODE'].startswith('O') == False and index > 0:
+            service_name = get_service_by_code(subrequest['srs-TYPE_CODE'], db) or subrequest['srs-TYPE_CODE']
+            note = {
+                'datetime': subrequest['srs-UPDATED_DATE'],
+                'type': 'follow_on',
+                'summary': 'Follow-on SR Update',
+                'description': 'Follow-on %s Closed' % service_name,
+                'extended_attributes': {
+                    'service_request_id': subrequest['srs-SERVICE_REQUEST_NUM'],
+                    'service_name': service_name,
+                    'agency_responsible': subrequest['codes_group-DESCRIPTION']
+                }
+            }
+            notes.append(note)
+                
     
     # ensure activities are in chronological order
     notes.sort(key=lambda note: note['datetime'])
