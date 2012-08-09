@@ -52,6 +52,13 @@ def flattened_arg_list(arg_name):
     return flattened
 
 
+def parse_bool(input):
+    '''Parse a bool value from a string. Useful for parsing ENV vars or query/form args.'''
+    if input == True or input == False:
+        return input
+    return input.lower() in ('1', 't', 'true')
+
+
 @app.before_request
 def always_require_api_key(*args, **kwargs):
     if app.config['REQUIRE_KEY']:
@@ -114,11 +121,14 @@ def api_services():
 
 @app.route("/api/requests/<request_id>.json")
 def api_get_request(request_id):
+    # should we return old-style results alongside new style?
+    legacy = parse_bool(request.args.get('legacy', True))
+    
     with closing(connect_db()) as db:
         actual_db = db[DB_NAME]
         sr = actual_db[COLLECTION_CASES].find_one({"_id": request_id})
         if sr and sr['requests'][0]['srs-TYPE_CODE'] in ACCEPTED_SERVICES:
-            data = [sr_format.format_case(sr, actual_db, legacy=True)]
+            data = [sr_format.format_case(sr, actual_db, legacy=legacy)]
             def json_formatter(obj):
                 if isinstance(obj, datetime.datetime):
                     return obj.isoformat()
@@ -132,6 +142,9 @@ def api_get_request(request_id):
 
 @app.route("/api/requests.json")
 def api_get_requests():
+    # should we return old-style results alongside new style?
+    legacy = parse_bool(request.args.get('legacy', True))
+    
     # paging
     page_size = app.config['DEFAULT_PAGE_SIZE']
     if 'page_size' in request.args and request.args['page_size'].isdigit():
@@ -193,7 +206,7 @@ def api_get_requests():
             query['status'] = {'$in': status}
             
         srs = actual_db[COLLECTION_CASES].find(query).sort(order_by, pymongo.DESCENDING).skip((page - 1) * page_size).limit(page_size)
-        data = map(lambda sr: sr_format.format_case(sr, actual_db, legacy=True), srs)
+        data = map(lambda sr: sr_format.format_case(sr, actual_db, legacy=legacy), srs)
         def json_formatter(obj):
             if isinstance(obj, datetime.datetime):
                 return obj.isoformat()
