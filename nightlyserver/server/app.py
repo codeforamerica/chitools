@@ -4,7 +4,7 @@ import datetime
 import traceback
 from contextlib import closing
 import logging
-from flask import Flask, render_template, request, abort, make_response
+from flask import Flask, render_template, request, abort, make_response, g
 import pymongo
 from dateutil.parser import parse as parse_date
 from handle_srs import *
@@ -80,6 +80,17 @@ def always_require_api_key(*args, **kwargs):
                     {'Content-type': 'application/json'})
 
 
+@app.before_request
+def set_api_rights(*args, **kwargs):
+    g.accepted_services = ACCEPTED_SERVICES
+    if 'api_key' in request.args:
+        with connect_db() as db:
+            key = request.args['api_key']
+            key_info = db[app.config['DB_NAME']][COLLECTION_API_KEYS].find_one({'_id': key})
+            if key_info and 'accepted_services' in key_info:
+                g.accepted_services = tuple(key_info['accepted_services'])
+
+
 @app.after_request
 def make_jsonp(response):
     extension = request.path.rpartition('.')[2]
@@ -98,7 +109,7 @@ def index():
 def api_services():
     with closing(connect_db()) as db:
         actual_db = db[DB_NAME]
-        rows = actual_db.Services.find({"_id": {"$in": ACCEPTED_SERVICES}})
+        rows = actual_db.Services.find({"_id": {"$in": g.accepted_services}})
         
     services = []
     for row in rows:
@@ -127,7 +138,7 @@ def api_get_request(request_id):
     with closing(connect_db()) as db:
         actual_db = db[DB_NAME]
         sr = actual_db[COLLECTION_CASES].find_one({"_id": request_id})
-        if sr and sr['requests'][0]['srs-TYPE_CODE'] in ACCEPTED_SERVICES:
+        if sr and sr['requests'][0]['srs-TYPE_CODE'] in g.accepted_services:
             data = [sr_format.format_case(sr, actual_db, legacy=legacy)]
             def json_formatter(obj):
                 if isinstance(obj, datetime.datetime):
@@ -171,9 +182,9 @@ def api_get_requests():
     service_code = flattened_arg_list('service_code')
     # limit service codes to the accepted ones
     if service_code:
-        service_code = filter(lambda code: code in ACCEPTED_SERVICES, service_code)
+        service_code = filter(lambda code: code in g.accepted_services, service_code)
     else:
-        service_code = ACCEPTED_SERVICES
+        service_code = g.accepted_services
     
     
     # CUSTOM: datetime_type (one of 'requested' or 'updated')
