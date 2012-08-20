@@ -170,8 +170,9 @@ def api_get_requests():
     # date ranges
     start_requested_datetime = request.args.get('start_date', type=parse_date)
     end_requested_datetime = request.args.get('end_date', type=parse_date)
-    start_updated_datetime = request.args.get('start_updated_date', type=parse_date)
-    end_updated_datetime = request.args.get('end_updated_date', type=parse_date)
+    # 'start_updated_date' and 'end_updated_date' are legacy, so try them if 'updated_*' isn't present
+    start_updated_datetime = request.args.get('updated_after', request.args.get('start_updated_date'), type=parse_date)
+    end_updated_datetime = request.args.get('updated_before', request.args.get('end_updated_date'), type=parse_date)
     # NOTE: no attempt to limit the dates to 90 day ranges as per spec because we are doing paging
     
     # listed args can come in two formats:
